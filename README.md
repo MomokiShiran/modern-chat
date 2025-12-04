@@ -84,30 +84,7 @@ chmod 777 uploads/
 
 在好友列表中选择一个好友，开始发送消息和文件。
 
-## 项目结构
-
-```
-chat/
-├── config.php          # 配置文件
-├── db.php              # 数据库连接
-├── db.sql              # 数据库初始化脚本
-├── User.php            # 用户功能类
-├── Friend.php          # 好友功能类
-├── Message.php         # 消息功能类
-├── FileUpload.php      # 文件上传类
-├── register.php        # 注册页面
-├── register_process.php # 注册处理
-├── login.php           # 登录页面
-├── login_process.php   # 登录处理
-├── chat.php            # 聊天主页面
-├── send_message.php    # 发送消息
-├── get_new_messages.php # 获取新消息
-├── logout.php          # 登出
-├── update_status.php   # 更新状态
-├── accept_request.php  # 接受好友请求
-├── uploads/            # 文件上传目录
-└── README.md           # 项目说明
-```
+---
 
 ## 安全说明
 
