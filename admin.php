@@ -12,10 +12,10 @@ require_once 'config.php';
 require_once 'db.php';
 
 // 检查用户是否登录
-// if (!isset($_SESSION['user_id'])) {
-//     header('Location: login.php');
-//     exit;
-// }
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
 
 // 确保is_admin字段存在并将第一个用户设置为管理员
 try {
