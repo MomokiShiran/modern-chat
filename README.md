@@ -45,11 +45,8 @@ mysql -u root -p < db.sql
 
 然后执行 `tmp3.sql` 文件来创建反馈表：
 
-```bash
-mysql -u root -p < tmp3.sql
-```
 
-或者在 phpMyAdmin 中分别导入 `db.sql` 和 `tmp3.sql` 文件。
+或者在 phpMyAdmin 中分别导入 `db.sql` 文件。
 
 ### 3. 配置数据库连接
 
