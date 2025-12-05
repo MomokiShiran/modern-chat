@@ -6,7 +6,7 @@
 
    ### 已部署好的体验网站
 
-  - https://chat.hyacine.com.cn/chat
+  - https://chat.hyacine.com.cn/
 
 ---
 ## 功能特性
@@ -39,6 +39,7 @@
 使用 MySQL 客户端执行 `db.sql` 文件来创建数据库和表：
 
 ```bash
+# 创建数据库与表
 mysql -u root -p < db.sql
 ```
 
@@ -49,6 +50,7 @@ mysql -u root -p < db.sql
 编辑 `config.php` 文件，配置您的数据库连接信息：
 
 ```php
+// 请手动填入数据库连接信息
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'chat');
 define('DB_USER', 'root');
@@ -60,6 +62,7 @@ define('DB_PASS', 'your_password');
 确保 `uploads/` 目录具有写入权限：
 
 ```bash
+# 设置权限
 chmod 777 uploads/
 ```
 
