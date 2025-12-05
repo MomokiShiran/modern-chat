@@ -842,6 +842,12 @@ $user->updateStatus($user_id, 'online');
     </style>
 </head>
 <body>
+    <?php if (isset($_SESSION['feedback_received']) && $_SESSION['feedback_received']): ?>
+        <div style="position: fixed; top: 20px; right: 20px; background: #4caf50; color: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); z-index: 1000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+            您的反馈已收到，正在修复中，感谢您的反馈！
+        </div>
+        <?php unset($_SESSION['feedback_received']); ?>
+    <?php endif; ?>
     <div class="chat-container">
         <!-- 左侧边栏 -->
         <div class="sidebar">
@@ -1170,6 +1176,9 @@ $user->updateStatus($user_id, 'online');
                         <!-- 保存设置按钮 -->
                         <button class="btn" style="width: 100%; padding: 6px; font-size: 12px;" onclick="saveSettings()">保存设置</button>
                     </div>
+                    
+                    <!-- 反馈按钮 -->
+                    <button class="btn" style="margin-top: 10px;" onclick="showFeedbackModal()">反馈问题</button>
                     
                     <button class="btn btn-danger" style="margin-top: 10px;" onclick="logout()">退出登录</button>
                 </div>
@@ -3314,5 +3323,76 @@ $user->updateStatus($user_id, 'online');
             </div>
         </div>
     </div>
+    
+    <!-- 反馈模态框 -->
+    <div id="feedback-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 2000; justify-content: center; align-items: center;">
+        <div style="background: white; border-radius: 12px; width: 90%; max-width: 500px; overflow: hidden; display: flex; flex-direction: column;">
+            <!-- 弹窗头部 -->
+            <div style="padding: 20px; background: #667eea; color: white; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 18px;">反馈问题</h3>
+                <button onclick="closeFeedbackModal()" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">×</button>
+            </div>
+            
+            <!-- 弹窗内容 -->
+            <div style="padding: 20px; overflow-y: auto; flex: 1;">
+                <form id="feedback-form" enctype="multipart/form-data">
+                    <div style="margin-bottom: 20px;">
+                        <label for="feedback-content" style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">问题描述</label>
+                        <textarea id="feedback-content" name="content" placeholder="请详细描述您遇到的问题" rows="5" style="width: 100%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; resize: vertical; outline: none;" required></textarea>
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <label for="feedback-image" style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">添加图片（可选）</label>
+                        <input type="file" id="feedback-image" name="image" accept="image/*" style="width: 100%; padding: 10px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                        <p style="font-size: 12px; color: #666; margin-top: 5px;">支持JPG、PNG、GIF格式，最大5MB</p>
+                    </div>
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button type="button" onclick="closeFeedbackModal()" style="padding: 10px 20px; background: #e0e0e0; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">取消</button>
+                        <button type="submit" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">提交反馈</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 显示反馈模态框
+        function showFeedbackModal() {
+            document.getElementById('feedback-modal').style.display = 'flex';
+        }
+        
+        // 关闭反馈模态框
+        function closeFeedbackModal() {
+            document.getElementById('feedback-modal').style.display = 'none';
+            // 重置表单
+            document.getElementById('feedback-form').reset();
+        }
+        
+        // 处理反馈表单提交
+        document.getElementById('feedback-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            formData.append('action', 'submit_feedback');
+            
+            try {
+                const response = await fetch('feedback-2.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('反馈提交成功，感谢您的反馈！');
+                    closeFeedbackModal();
+                } else {
+                    alert(result.message || '提交失败，请稍后重试');
+                }
+            } catch (error) {
+                console.error('提交反馈错误:', error);
+                alert('网络错误，请稍后重试');
+            }
+        });
+    </script>
 </body>
 </html>

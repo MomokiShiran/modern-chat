@@ -712,6 +712,12 @@ $user_ip = getUserIP();
     </style>
 </head>
 <body>
+    <?php if (isset($_SESSION['feedback_received']) && $_SESSION['feedback_received']): ?>
+        <div style="position: fixed; top: 20px; right: 20px; background: #4caf50; color: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); z-index: 1000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+            您的反馈已收到，正在修复中，感谢您的反馈！
+        </div>
+        <?php unset($_SESSION['feedback_received']); ?>
+    <?php endif; ?>
     <div class="chat-container">
     <!-- 顶部导航栏 -->
     <div class="top-nav">
@@ -746,6 +752,7 @@ $user_ip = getUserIP();
         <div class="menu-items">
             <a href="edit_profile.php" class="menu-item">编辑资料</a>
             <button class="menu-item" onclick="showAddFriendModal()">添加好友</button>
+            <button class="menu-item" onclick="showFeedbackModal()">反馈问题</button>
             <button class="menu-item" onclick="showScanLoginModal()">扫码登录PC端</button>
             <a href="logout.php" class="menu-item menu-item-danger">退出登录</a>
         </div>
@@ -947,6 +954,28 @@ $user_ip = getUserIP();
         </div>
     </div>
     
+    <!-- 反馈模态框 -->
+    <div class="modal" id="feedback-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 2000; flex-direction: column; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 20px; border-radius: 12px; width: 90%; max-width: 400px;">
+            <h3 style="margin-bottom: 20px; color: #333; text-align: center;">反馈问题</h3>
+            <form id="feedback-form" enctype="multipart/form-data">
+                <div style="margin-bottom: 20px;">
+                    <label for="feedback-content" style="display: block; margin-bottom: 8px; color: #666; font-weight: 500;">问题描述</label>
+                    <textarea id="feedback-content" name="content" placeholder="请详细描述您遇到的问题" rows="5" style="width: 100%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; resize: vertical; outline: none; transition: all 0.2s ease;" required></textarea>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label for="feedback-image" style="display: block; margin-bottom: 8px; color: #666; font-weight: 500;">添加图片（可选）</label>
+                    <input type="file" id="feedback-image" name="image" accept="image/*" style="width: 100%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s ease;">
+                    <p style="font-size: 12px; color: #999; margin-top: 5px;">支持JPG、PNG、GIF格式，最大5MB</p>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button type="button" onclick="closeFeedbackModal()" style="flex: 1; padding: 12px; background: #f5f5f5; color: #333; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">取消</button>
+                    <button type="submit" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">提交反馈</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <script>
         // 切换菜单
         function toggleMenu() {
@@ -1002,6 +1031,48 @@ $user_ip = getUserIP();
                 }
             } catch (error) {
                 console.error('添加好友请求失败:', error);
+                alert('网络错误，请稍后重试');
+            }
+        });
+        
+        // 显示反馈模态框
+        function showFeedbackModal() {
+            const modal = document.getElementById('feedback-modal');
+            modal.style.display = 'flex';
+            toggleMenu();
+        }
+        
+        // 关闭反馈模态框
+        function closeFeedbackModal() {
+            const modal = document.getElementById('feedback-modal');
+            modal.style.display = 'none';
+            // 重置表单
+            document.getElementById('feedback-form')?.reset();
+        }
+        
+        // 处理反馈表单提交
+        document.getElementById('feedback-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            formData.append('action', 'submit_feedback');
+            
+            try {
+                const response = await fetch('feedback-2.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('反馈提交成功，感谢您的反馈！');
+                    closeFeedbackModal();
+                } else {
+                    alert(result.message || '提交失败，请稍后重试');
+                }
+            } catch (error) {
+                console.error('提交反馈错误:', error);
                 alert('网络错误，请稍后重试');
             }
         });
