@@ -29,6 +29,7 @@ if (isset($_GET['scan_login']) && isset($_GET['token'])) {
                 $_SESSION['username'] = $user_info['username'];
                 $_SESSION['email'] = $user_info['email'];
                 $_SESSION['avatar'] = $user_info['avatar'];
+                $_SESSION['is_admin'] = isset($user_info['is_admin']) && $user_info['is_admin'];
                 $_SESSION['last_activity'] = time();
                 
                 // 登录成功后删除数据库记录，避免重复使用
@@ -47,6 +48,25 @@ if (isset($_GET['scan_login']) && isset($_GET['token'])) {
                     $stmt->execute([$username]);
                 } catch (PDOException $e) {
                     error_log("Clear password requests error: " . $e->getMessage());
+                }
+                
+                // 检查用户是否有反馈已被标记为"received"
+                try {
+                    // 检查用户是否有反馈被标记为"received"
+                    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM feedback WHERE user_id = ? AND status = 'received'");
+                    $stmt->execute([$user_id]);
+                    $result = $stmt->fetch();
+                    
+                    if ($result['count'] > 0) {
+                        // 在会话中存储提示信息
+                        $_SESSION['feedback_received'] = true;
+                        
+                        // 将这些反馈的状态更新为"fixed"，以避免重复提示
+                        $stmt = $conn->prepare("UPDATE feedback SET status = 'fixed' WHERE user_id = ? AND status = 'received'");
+                        $stmt->execute([$user_id]);
+                    }
+                } catch (PDOException $e) {
+                    error_log("Check feedback status error: " . $e->getMessage());
                 }
                 
                 // 重定向到聊天页面
@@ -101,6 +121,7 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['username'] = $result['user']['username'];
         $_SESSION['email'] = $result['user']['email'];
         $_SESSION['avatar'] = $result['user']['avatar'];
+        $_SESSION['is_admin'] = isset($result['user']['is_admin']) && $result['user']['is_admin'];
         $_SESSION['last_activity'] = time();
         
         // 登录成功后清除已处理的忘记密码申请
@@ -114,6 +135,26 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$username]);
         } catch (PDOException $e) {
             error_log("Clear password requests error: " . $e->getMessage());
+        }
+        
+        // 检查用户是否有反馈已被标记为"received"
+        try {
+            $user_id = $result['user']['id'];
+            // 检查用户是否有反馈被标记为"received"
+            $stmt = $conn->prepare("SELECT COUNT(*) as count FROM feedback WHERE user_id = ? AND status = 'received'");
+            $stmt->execute([$user_id]);
+            $feedback_result = $stmt->fetch();
+            
+            if ($feedback_result['count'] > 0) {
+                // 在会话中存储提示信息
+                $_SESSION['feedback_received'] = true;
+                
+                // 将这些反馈的状态更新为"fixed"，以避免重复提示
+                $stmt = $conn->prepare("UPDATE feedback SET status = 'fixed' WHERE user_id = ? AND status = 'received'");
+                $stmt->execute([$user_id]);
+            }
+        } catch (PDOException $e) {
+            error_log("Check feedback status error: " . $e->getMessage());
         }
         
         // 重定向到聊天页面
