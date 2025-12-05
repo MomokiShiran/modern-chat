@@ -20,8 +20,12 @@ if (!$invitation_id) {
 // 创建Group实例
 $group = new Group($conn);
 
-// 接受邀请
-$result = $group->acceptGroupInvitation($invitation_id, $user_id);
+// 拒绝邀请
+$result = $group->rejectGroupInvitation($invitation_id, $user_id);
 
-echo json_encode($result);
+if ($result) {
+    echo json_encode(['success' => true, 'message' => '邀请已拒绝']);
+} else {
+    echo json_encode(['success' => false, 'message' => '拒绝邀请失败']);
+}
 ?>
