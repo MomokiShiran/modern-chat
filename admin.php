@@ -56,7 +56,7 @@ $current_user = $user->getUserById($_SESSION['user_id']);
 
 // 检查用户是否是管理员，或者用户名是Admin且邮箱以admin@开头
 if (!$current_user['is_admin'] && !($current_user['username'] === 'Admin' && strpos($current_user['email'], 'admin@') === 0)) {
-    header('Location: chat.php');
+    header('Location: login.php?error=权限不足，请先登录管理员账号。');
     exit;
 }
 
@@ -443,7 +443,7 @@ if (isset($_POST['action']) && in_array($_POST['action'], [
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 114514px;
             margin: 0 auto;
             padding: 20px;
         }
