@@ -24,6 +24,8 @@
 - 👥 **群聊功能** - 支持创建群聊、邀请好友加入群聊
 - 📨 **群聊邀请** - 支持邀请好友加入群聊，包含审批流程
 - ⏳ **入群申请** - 普通成员邀请的好友需要管理员或群主审批才能入群
+- 🔒 **封禁系统** - 管理员可以封禁用户，被封禁用户无法登录和使用系统
+- 👨‍💼 **自动添加管理员好友** - 用户注册后自动添加Admin管理员为好友并自动通过，方便管理员沟通和管理
 
 ## 技术栈
 
@@ -31,6 +33,21 @@
 - **后端**: PHP 7.4+
 - **数据库**: MySQL 5.7+
 - **数据库驱动**: PDO
+## config.json 配置文件
+
+在config目录下，您需要修改一个 `config.json` 文件，用于存储聊天系统的配置信息和其他配置。以下是一个示例配置文件：
+
+```json
+{
+    "Create_a_group_chat_for_all_members": true, //你希望用户注册后自动创建一个群聊，群聊名称为所有用户的用户名拼接，例如：user1user2user3
+    "Restrict_registration": true, //你希望限制注册（如果配置了这个必须配置下面的Restrict_registration_ip的数量）
+    "Restrict_registration_ip": 3, //你希望一个IP地址最多注册几个账号
+    "ban_system": true, //是否启用封禁系统
+    "user_name_max": 12 //你希望最大设置的用户名长度
+}
+```
+
+请根据您的实际数据库配置修改这些值。
 
 ## 安装步骤
 
@@ -57,8 +74,12 @@ mysql -u root -p < tmp3.sql
 ```bash
 mysql -u root -p < create_group_invitation_tables.sql
 ```
+最后执行 `create_ip_registration_table.sql` 文件来创建群聊邀请相关表：
 
-或者在 phpMyAdmin 中分别导入 `db.sql`、`tmp3.sql` 和 `create_group_invitation_tables.sql` 文件。
+```bash
+mysql -u root -p < create_ip_registration_table.sql
+```
+或者在 phpMyAdmin 中分别导入 `db.sql`、`tmp3.sql` 、 `create_group_invitation_tables.sql` 和 `create_ip_registration_table.sql` 文件。
 
 ### 3. 配置数据库连接
 
@@ -148,6 +169,26 @@ chmod 777 uploads/
 
 - 当您提交的反馈被管理员标记为已收到时，您下次登录系统会收到通知
 - 通知会显示在聊天页面的右上角，点击关闭按钮即可关闭通知
+
+### 12. 封禁用户（管理员）
+
+1. 登录管理员账户
+2. 在管理页面找到要封禁的用户
+3. 点击"封禁用户"按钮
+4. 填写封禁理由和封禁时长
+5. 点击"确认封禁"按钮
+
+被封禁用户将：
+- 无法在登录页面登录
+- 在线用户会收到封禁通知并在10秒后自动退出
+- 显示明确的封禁原因和预计解封时间
+
+### 13. 自动添加管理员好友
+
+- 新用户注册后会自动添加名为"Admin"的管理员为好友，无需手动发送请求
+- 已注册用户首次登录后会自动添加Admin为好友
+- 双向好友关系自动建立，Admin和用户互为好友
+- 方便管理员与用户沟通，便于管理和支持
 
 ---
 
