@@ -3,5 +3,6 @@
     "Restrict_registration": true,
     "Restrict_registration_ip": 3,
     "ban_system": true,
-    "user_name_max": 12
+    "user_name_max": 12,
+    "upload_files_max": 150
 }
