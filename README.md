@@ -15,7 +15,7 @@
 - 🔐 **用户认证** - 安全的注册和登录系统
 - 👥 **好友管理** - 添加好友、接受请求、查看好友列表
 - 💬 **实时聊天** - 发送文本消息和文件
-- 📎 **文件传输** - 支持发送小于 150MB 的文件
+- 📎 **文件传输** - 支持发送小于 150MB（可修改） 的文件
 - 🟢 **在线状态** - 显示好友是否在线
 - 🔍 **好友搜索** - 快速查找好友
 - 📱 **响应式设计** - 适配移动端和桌面端
@@ -46,13 +46,13 @@
     "user_name_max": 12 
 }
 ```
-Create_a_group_chat_for_all_members: 你希望用户注册后自动创建一个群聊，群聊名称为所有用户的用户名拼接，例如：user1user2user3
-Restrict_registration: 是否限制注册（如果配置了这个必须配置下面的Restrict_registration_ip的数量）
-Restrict_registration_ip: 你希望一个IP地址最多注册几个账号
-user_name_max: 你希望最大设置的用户名长度
-ban_system: 是否启用封禁系统
-
-请根据您的实际数据库配置修改这些值。
+`Create_a_group_chat_for_all_members`: 你希望用户注册后自动创建一个群聊，群聊名称为所有用户的用户名拼接，例如：user1user2user3
+`Restrict_registration`: 是否限制注册（如果配置了这个必须配置下面的Restrict_registration_ip的数量）
+`Restrict_registration_ip`: 你希望一个IP地址最多注册几个账号
+`user_name_max`: 你希望最大设置的用户名长度
+`ban_system`: 是否启用封禁系统
+`upload_files_max`: 你希望用户最大可发送的文件大小
+请根据您的实际配置修改这些值。
 
 ## 安装步骤
 
