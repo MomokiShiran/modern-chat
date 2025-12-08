@@ -204,7 +204,8 @@ chmod 777 uploads/
 - Firefox
 - Safari
 - Edge
-
+- via
+- 主流浏览器
 ## 许可证
 
 MIT License
