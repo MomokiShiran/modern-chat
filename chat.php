@@ -1584,6 +1584,93 @@ $agreed_to_terms = $user->hasAgreedToTerms($user_id);
             }
         });
         
+        // 截图功能
+        async function takeScreenshot() {
+            try {
+                // 请求屏幕捕获
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { cursor: 'always' },
+                    audio: false
+                });
+                
+                // 创建视频元素来显示流
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                
+                // 使用Promise确保视频元数据加载完成
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = resolve;
+                });
+                
+                // 播放视频
+                await video.play();
+                
+                // 创建Canvas元素
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // 绘制视频帧到Canvas
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // 停止流
+                stream.getTracks().forEach(track => track.stop());
+                
+                // 将Canvas转换为Blob，使用Promise处理
+                const blob = await new Promise((resolve) => {
+                    canvas.toBlob(resolve, 'image/png');
+                });
+                
+                if (blob) {
+                    // 创建文件对象
+                    const screenshotFile = new File([blob], `screenshot_${Date.now()}.png`, {
+                        type: 'image/png'
+                    });
+                    
+                    // 创建DataTransfer对象
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(screenshotFile);
+                    
+                    // 将文件添加到file-input中
+                    const fileInput = document.getElementById('file-input');
+                    if (fileInput) {
+                        fileInput.files = dataTransfer.files;
+                        
+                        // 触发change事件，自动提交表单
+                        const event = new Event('change', { bubbles: true });
+                        fileInput.dispatchEvent(event);
+                    } else {
+                        console.error('未找到file-input元素');
+                        alert('截图失败：未找到文件输入元素');
+                    }
+                } else {
+                    console.error('Canvas转换为Blob失败');
+                    alert('截图失败：无法处理截图数据');
+                }
+            } catch (error) {
+                console.error('截图失败:', error);
+                // 根据错误类型提供更具体的提示
+                if (error.name === 'NotAllowedError') {
+                    alert('截图失败：您拒绝了屏幕捕获请求');
+                } else if (error.name === 'NotFoundError') {
+                    alert('截图失败：未找到可捕获的屏幕');
+                } else if (error.name === 'NotReadableError') {
+                    alert('截图失败：无法访问屏幕内容');
+                } else {
+                    alert(`截图失败：${error.message || '请重试'}`);
+                }
+            }
+        }
+        
+        // 添加Ctrl+Alt+D快捷键监听
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.altKey && e.key === 'd') {
+                e.preventDefault();
+                takeScreenshot();
+            }
+        });
+        
         // 群聊@功能自动补全
         let groupMembers = [];
         let mentionDropdown = document.getElementById('mention-dropdown');
@@ -2366,6 +2453,175 @@ $agreed_to_terms = $user->hasAgreedToTerms($user_id);
             timeDiv.className = 'message-time';
             timeDiv.textContent = new Date(message.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
             contentDiv.appendChild(timeDiv);
+            
+            // 添加消息操作菜单（仅发送者可见）
+            if (isSent && message.id && typeof message.created_at !== 'undefined') {
+                const now = new Date();
+                const messageTime = new Date(message.created_at);
+                const diffMinutes = Math.floor((now - messageTime) / (1000 * 60));
+                
+                // 只有2分钟内的消息可以撤回
+                if (diffMinutes < 2) {
+                    const messageMenu = document.createElement('div');
+                    messageMenu.className = 'message-menu';
+                    messageMenu.style.cssText = `
+                        position: relative;
+                        display: inline-block;
+                    `;
+                    
+                    const menuButton = document.createElement('button');
+                    menuButton.className = 'message-menu-btn';
+                    menuButton.textContent = '...';
+                    menuButton.style.cssText = `
+                        background: none;
+                        border: none;
+                        color: #666;
+                        font-size: 16px;
+                        cursor: pointer;
+                        padding: 2px 5px;
+                        border-radius: 3px;
+                        transition: background-color 0.2s;
+                        margin-left: 5px;
+                    `;
+                    
+                    menuButton.onmouseover = () => {
+                        menuButton.style.backgroundColor = '#f0f0f0';
+                    };
+                    
+                    menuButton.onmouseout = () => {
+                        menuButton.style.backgroundColor = 'transparent';
+                    };
+                    
+                    const menuContent = document.createElement('div');
+                    menuContent.className = 'message-menu-content';
+                    menuContent.style.cssText = `
+                        display: none;
+                        position: absolute;
+                        right: 0;
+                        top: 100%;
+                        background: white;
+                        border: 1px solid #e0e0e0;
+                        border-radius: 4px;
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                        z-index: 1000;
+                        min-width: 80px;
+                    `;
+                    
+                    // 撤回消息按钮
+                    const recallButton = document.createElement('button');
+                    recallButton.textContent = '撤回';
+                    recallButton.style.cssText = `
+                        display: block;
+                        width: 100%;
+                        padding: 8px 12px;
+                        background: none;
+                        border: none;
+                        text-align: left;
+                        cursor: pointer;
+                        font-size: 14px;
+                        color: #333;
+                        transition: background-color 0.2s;
+                    `;
+                    
+                    recallButton.onmouseover = () => {
+                        recallButton.style.backgroundColor = '#f0f0f0';
+                    };
+                    
+                    recallButton.onmouseout = () => {
+                        recallButton.style.backgroundColor = 'transparent';
+                    };
+                    
+                    recallButton.onclick = async () => {
+                        if (confirm('确定要撤回这条消息吗？')) {
+                            const chat_type = document.querySelector('input[name="chat_type"]').value;
+                            const result = await fetch('recall_message.php', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                },
+                                body: `chat_type=${chat_type}&message_id=${message.id}`
+                            });
+                            
+                            const resultData = await result.json();
+                            if (resultData.success) {
+                                // 替换消息为撤回提示
+                                const recallMessageDiv = document.createElement('div');
+                                recallMessageDiv.className = 'recall-message';
+                                recallMessageDiv.style.cssText = `
+                                    color: #999;
+                                    font-size: 12px;
+                                    margin-top: 5px;
+                                    text-align: ${isSent ? 'right' : 'left'};
+                                `;
+                                recallMessageDiv.textContent = `${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}: ${isSent ? '您' : message.username}撤回了一条消息`;
+                                
+                                // 清空消息内容
+                                contentDiv.innerHTML = '';
+                                contentDiv.appendChild(recallMessageDiv);
+                                
+                                // 添加重新编辑按钮（仅发送者可见）
+                                if (isSent) {
+                                    const editButton = document.createElement('button');
+                                    editButton.textContent = '重新编辑';
+                                    editButton.style.cssText = `
+                                        background: none;
+                                        border: none;
+                                        color: #667eea;
+                                        cursor: pointer;
+                                        font-size: 12px;
+                                        margin-top: 5px;
+                                        padding: 2px 5px;
+                                        border-radius: 3px;
+                                        transition: background-color 0.2s;
+                                    `;
+                                    
+                                    editButton.onmouseover = () => {
+                                        editButton.style.backgroundColor = '#f0f0f0';
+                                    };
+                                    
+                                    editButton.onmouseout = () => {
+                                        editButton.style.backgroundColor = 'transparent';
+                                    };
+                                    
+                                    editButton.onclick = () => {
+                                        // 恢复消息内容到输入框
+                                        const messageInput = document.getElementById('message-input');
+                                        if (message.content) {
+                                            messageInput.value = message.content;
+                                        }
+                                        // 聚焦输入框
+                                        messageInput.focus();
+                                        // 滚动到底部
+                                        messageInput.scrollTop = messageInput.scrollHeight;
+                                    };
+                                    
+                                    contentDiv.appendChild(editButton);
+                                }
+                            } else {
+                                alert(resultData.message);
+                            }
+                        }
+                    };
+                    
+                    menuContent.appendChild(recallButton);
+                    
+                    messageMenu.appendChild(menuButton);
+                    messageMenu.appendChild(menuContent);
+                    
+                    // 显示/隐藏菜单
+                    menuButton.onclick = (e) => {
+                        e.stopPropagation();
+                        menuContent.style.display = menuContent.style.display === 'block' ? 'none' : 'block';
+                    };
+                    
+                    // 点击其他地方关闭菜单
+                    document.addEventListener('click', () => {
+                        menuContent.style.display = 'none';
+                    });
+                    
+                    contentDiv.appendChild(messageMenu);
+                }
+            }
             
             messageDiv.appendChild(avatarDiv);
             messageDiv.appendChild(contentDiv);

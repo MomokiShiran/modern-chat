@@ -370,46 +370,55 @@ class Group {
      * 撤回群聊消息
      * @param int $message_id 消息ID
      * @param int $user_id 操作用户ID
-     * @return bool 是否成功
+     * @return array 结果
      */
-    public function removeGroupMessage($message_id, $user_id) {
-        // 获取消息信息
-        $stmt = $this->conn->prepare("SELECT gm.*, g.owner_id FROM group_messages gm 
-                                     JOIN groups g ON gm.group_id = g.id 
-                                     WHERE gm.id = ?");
-        $stmt->execute([$message_id]);
-        $message = $stmt->fetch();
-        
-        if (!$message) {
-            return false;
-        }
-        
-        // 检查消息是否在2分钟内
-        $message_time = strtotime($message['created_at']);
-        $current_time = time();
-        if (($current_time - $message_time) > 120) { // 120秒 = 2分钟
-            return false;
-        }
-        
-        // 检查操作权限：消息发送者、群主或管理员
-        if ($user_id == $message['sender_id']) {
-            // 发送者可以撤回自己的消息
-            $can_remove = true;
-        } else {
-            // 检查是否是管理员或群主
-            $stmt = $this->conn->prepare("SELECT is_admin FROM group_members WHERE group_id = ? AND user_id = ?");
-            $stmt->execute([$message['group_id'], $user_id]);
-            $member = $stmt->fetch();
+    public function recallGroupMessage($message_id, $user_id) {
+        try {
+            // 获取消息信息
+            $stmt = $this->conn->prepare("SELECT gm.*, g.owner_id FROM group_messages gm 
+                                         JOIN groups g ON gm.group_id = g.id 
+                                         WHERE gm.id = ?");
+            $stmt->execute([$message_id]);
+            $message = $stmt->fetch();
             
-            $can_remove = $user_id == $message['owner_id'] || ($member && $member['is_admin']);
+            if (!$message) {
+                return ['success' => false, 'message' => '消息不存在'];
+            }
+            
+            // 检查消息是否在2分钟内
+            $message_time = strtotime($message['created_at']);
+            $current_time = time();
+            if (($current_time - $message_time) > 120) { // 120秒 = 2分钟
+                return ['success' => false, 'message' => '消息已超过2分钟，无法撤回'];
+            }
+            
+            // 检查操作权限：消息发送者、群主或管理员
+            if ($user_id == $message['sender_id']) {
+                // 发送者可以撤回自己的消息
+                $can_remove = true;
+            } else {
+                // 检查是否是管理员或群主
+                $stmt = $this->conn->prepare("SELECT is_admin FROM group_members WHERE group_id = ? AND user_id = ?");
+                $stmt->execute([$message['group_id'], $user_id]);
+                $member = $stmt->fetch();
+                
+                $can_remove = $user_id == $message['owner_id'] || ($member && $member['is_admin']);
+            }
+            
+            if ($can_remove) {
+                $stmt = $this->conn->prepare("DELETE FROM group_messages WHERE id = ?");
+                if ($stmt->execute([$message_id])) {
+                    return ['success' => true, 'message' => '消息已成功撤回'];
+                } else {
+                    return ['success' => false, 'message' => '撤回消息失败'];
+                }
+            } else {
+                return ['success' => false, 'message' => '您无权撤回此消息'];
+            }
+        } catch (PDOException $e) {
+            error_log("Recall Group Message Error: " . $e->getMessage());
+            return ['success' => false, 'message' => '撤回消息失败'];
         }
-        
-        if ($can_remove) {
-            $stmt = $this->conn->prepare("DELETE FROM group_messages WHERE id = ?");
-            return $stmt->execute([$message_id]);
-        }
-        
-        return false;
     }
     
     /**

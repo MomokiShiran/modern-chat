@@ -255,4 +255,65 @@ class Message {
             return [];
         }
     }
+    
+    /**
+     * 删除文件辅助函数
+     * @param string $file_path 文件路径
+     * @return bool 是否成功删除
+     */
+    private function deleteFile($file_path) {
+        if (!empty($file_path) && file_exists($file_path)) {
+            try {
+                return unlink($file_path);
+            } catch (Exception $e) {
+                error_log("Delete File Error: " . $e->getMessage());
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * 撤回好友消息
+     * @param int $message_id 消息ID
+     * @param int $user_id 当前用户ID
+     * @return array 结果
+     */
+    public function recallMessage($message_id, $user_id) {
+        try {
+            // 1. 验证消息是否存在且是当前用户发送的
+            $stmt = $this->conn->prepare("SELECT * FROM messages WHERE id = ? AND sender_id = ?");
+            $stmt->execute([$message_id, $user_id]);
+            $message = $stmt->fetch();
+            
+            if (!$message) {
+                return ['success' => false, 'message' => '消息不存在或您无权撤回'];
+            }
+            
+            // 2. 验证消息是否在2分钟内
+            $created_at = new DateTime($message['created_at']);
+            $now = new DateTime();
+            $diff = $created_at->diff($now);
+            $minutes = $diff->days * 24 * 60 + $diff->h * 60 + $diff->i;
+            
+            if ($minutes > 2) {
+                return ['success' => false, 'message' => '消息已超过2分钟，无法撤回'];
+            }
+            
+            // 3. 保存文件路径用于后续删除
+            $file_path = $message['file_path'];
+            
+            // 4. 删除消息
+            $stmt = $this->conn->prepare("DELETE FROM messages WHERE id = ?");
+            $stmt->execute([$message_id]);
+            
+            // 5. 删除对应的文件
+            $this->deleteFile($file_path);
+            
+            return ['success' => true, 'message' => '消息已成功撤回'];
+        } catch(PDOException $e) {
+            error_log("Recall Message Error: " . $e->getMessage());
+            return ['success' => false, 'message' => '撤回消息失败'];
+        }
+    }
 }
