@@ -738,6 +738,41 @@ $user_ip = getUserIP();
             transform: scale(1.05);
         }
         
+        /* 图片查看器 */
+        .image-viewer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            cursor: zoom-out;
+            touch-action: none; /* 禁用浏览器默认触摸行为 */
+            overflow: hidden;
+        }
+        
+        .image-viewer.active {
+            display: flex;
+        }
+        
+        .image-viewer-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            max-width: 95%;
+            max-height: 95%;
+            object-fit: contain;
+            border-radius: 8px;
+            transform-origin: center;
+            transform: translate(-50%, -50%) scale(1);
+            transition: transform 0.1s ease;
+            touch-action: none; /* 禁用浏览器默认触摸行为 */
+        }
+        
         /* 响应式设计 */
         @media (max-width: 768px) {
             .main-content {
@@ -823,6 +858,12 @@ $user_ip = getUserIP();
             </div>
         </div>
     </div>
+    
+    <!-- 图片查看器 -->
+    <div class="image-viewer" id="imageViewer" style="z-index: 9999;">
+        <img class="image-viewer-content" id="imageViewerContent" src="" alt="查看大图">
+        <div id="imageViewerClose" style="position: fixed; top: 10px; right: 10px; background: red; color: white; font-size: 24px; cursor: pointer; padding: 5px 10px; z-index: 10000; user-select: none;">×</div>
+    </div>
     <div class="chat-container">
     <!-- 顶部导航栏 -->
     <div class="top-nav">
@@ -865,6 +906,7 @@ $user_ip = getUserIP();
             </button>
             <button class="menu-item" onclick="showFeedbackModal()">反馈问题</button>
             <button class="menu-item" onclick="showScanLoginModal()">扫码登录PC端</button>
+            <a href="https://github.com/LzdqesjG/modern-chat" target="_blank" class="menu-item">GitHub开源地址</a>
             <a href="logout.php" class="menu-item menu-item-danger">退出登录</a>
         </div>
     </div>
@@ -890,10 +932,11 @@ $user_ip = getUserIP();
             <div id="friends-list-content" style="<?php echo $chat_type === 'friend' ? 'display: block;' : 'display: none;'; ?>">
                 <?php foreach ($friends as $friend_item): ?>
                     <?php 
-                        $friend_unread_key = 'friend_' . $friend_item['id'];
+                        $friend_id = $friend_item['friend_id'] ?? $friend_item['id'] ?? 0;
+                        $friend_unread_key = 'friend_' . $friend_id;
                         $friend_unread_count = isset($unread_counts[$friend_unread_key]) ? $unread_counts[$friend_unread_key] : 0;
                     ?>
-                    <div class="friend-item <?php echo $chat_type === 'friend' && $selected_id == $friend_item['id'] ? 'active' : ''; ?>" data-friend-id="<?php echo $friend_item['id']; ?>">
+                    <div class="friend-item <?php echo $chat_type === 'friend' && $selected_id == $friend_id ? 'active' : ''; ?>" data-friend-id="<?php echo $friend_id; ?>">
                         <div class="friend-avatar">
                             <?php if (!empty($friend_item['avatar'])): ?>
                                 <img src="<?php echo $friend_item['avatar']; ?>" alt="<?php echo $friend_item['username']; ?>" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
@@ -1856,9 +1899,6 @@ $user_ip = getUserIP();
                         currentScanUrl = result;
                         currentQid = qid;
                         
-                        // 获取当前IP地址
-                        currentIpAddress = '<?php echo $user_ip; ?>';
-                        
                         // 显示确认登录对话框
                         console.log('显示确认登录对话框');
                         showConfirmModal();
@@ -1883,8 +1923,52 @@ $user_ip = getUserIP();
         function showConfirmModal() {
             const modal = document.getElementById('confirm-modal');
             const message = document.getElementById('confirm-message');
-            message.innerHTML = `确定要在PC网页端登录吗？<br><br>登录IP地址: <strong>${currentIpAddress}</strong>`;
+            const confirmBtn = modal.querySelector('button[onclick="confirmLogin()"]');
+            
+            // 设置倒计时初始值
+            let countdown = 6;
+            
+            // 禁用确认按钮
+            confirmBtn.disabled = true;
+            confirmBtn.style.opacity = '0.5';
+            confirmBtn.style.cursor = 'not-allowed';
+            
+            // 显示加载中状态
+            message.innerHTML = `确定要在PC网页端登录吗？<br><br>正在获取登录IP地址...<br><br><small>请等待 ${countdown} 秒后点击确认</small>`;
             modal.style.display = 'flex';
+            
+            // 从服务器获取扫码登录的IP地址
+            fetch(`get_scan_ip.php?qid=${currentQid}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        currentIpAddress = data.ip_address;
+                        message.innerHTML = `确定要在PC网页端登录吗？<br><br>登录IP地址: <strong>${currentIpAddress}</strong><br><br><small>请等待 ${countdown} 秒后点击确认</small>`;
+                    } else {
+                        currentIpAddress = '获取IP失败';
+                        message.innerHTML = `确定要在PC网页端登录吗？<br><br>登录IP地址: <strong>${currentIpAddress}</strong><br><br><small>请等待 ${countdown} 秒后点击确认</small>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('获取IP地址失败:', error);
+                    currentIpAddress = '获取IP失败';
+                    message.innerHTML = `确定要在PC网页端登录吗？<br><br>登录IP地址: <strong>${currentIpAddress}</strong><br><br><small>请等待 ${countdown} 秒后点击确认</small>`;
+                });
+            
+            // 倒计时功能
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                message.innerHTML = `确定要在PC网页端登录吗？<br><br>登录IP地址: <strong>${currentIpAddress}</strong><br><br><small>请等待 ${countdown} 秒后点击确认</small>`;
+                
+                if (countdown <= 0) {
+                    clearInterval(countdownInterval);
+                    // 启用确认按钮
+                    confirmBtn.disabled = false;
+                    confirmBtn.style.opacity = '1';
+                    confirmBtn.style.cursor = 'pointer';
+                    message.innerHTML = `确定要在PC网页端登录吗？<br><br>登录IP地址: <strong>${currentIpAddress}</strong>`;
+                }
+            }, 1000);
         }
         
         // 确认登录
@@ -2182,22 +2266,30 @@ $user_ip = getUserIP();
                     // 群聊消息，使用发送者的头像
                     const img = document.createElement('img');
                     img.src = message.avatar;
-                    img.alt = message.username || '未知用户';
+                    img.alt = message.sender_username || '未知用户';
                     img.style.cssText = 'width: 100%; height: 100%; border-radius: 50%; object-fit: cover;';
                     avatarDiv.appendChild(img);
                 } else {
-                    // 好友聊天，使用好友头像或用户名首字母
-                    const friendAvatar = '<?php echo $selected_friend && !empty($selected_friend['avatar']) ? $selected_friend['avatar'] : ''; ?>';
-                    const friendName = '<?php echo $selected_friend ? $selected_friend['username'] : ''; ?>';
-                    
-                    if (friendAvatar) {
-                        const img = document.createElement('img');
-                        img.src = friendAvatar;
-                        img.alt = friendName;
-                        img.style.cssText = 'width: 100%; height: 100%; border-radius: 50%; object-fit: cover;';
-                        avatarDiv.appendChild(img);
+                    // 检查是否是群聊消息
+                    const chatType = '<?php echo $chat_type; ?>';
+                    if (chatType === 'group') {
+                        // 群聊消息，没有头像时显示发送者用户名首字母
+                        const senderName = message.sender_username || '未知用户';
+                        avatarDiv.textContent = senderName.substring(0, 2);
                     } else {
-                        avatarDiv.textContent = friendName ? friendName.substring(0, 2) : '?';
+                        // 好友聊天，使用好友头像或用户名首字母
+                        const friendAvatar = '<?php echo $selected_friend && !empty($selected_friend['avatar']) ? $selected_friend['avatar'] : ''; ?>';
+                        const friendName = '<?php echo $selected_friend ? $selected_friend['username'] : ''; ?>';
+                        
+                        if (friendAvatar) {
+                            const img = document.createElement('img');
+                            img.src = friendAvatar;
+                            img.alt = friendName;
+                            img.style.cssText = 'width: 100%; height: 100%; border-radius: 50%; object-fit: cover;';
+                            avatarDiv.appendChild(img);
+                        } else {
+                            avatarDiv.textContent = friendName ? friendName.substring(0, 2) : '?';
+                        }
                     }
                 }
             }
@@ -2459,7 +2551,7 @@ $user_ip = getUserIP();
                                     margin-top: 5px;
                                     text-align: ${isSent ? 'right' : 'left'};
                                 `;
-                                recallMessageDiv.textContent = `${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}: ${isSent ? '您' : message.username}撤回了一条消息`;
+                                recallMessageDiv.textContent = `${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}: ${isSent ? '您' : message.sender_username}撤回了一条消息`;
                                 
                                 // 清空消息内容
                                 contentDiv.innerHTML = '';
@@ -2768,6 +2860,11 @@ $user_ip = getUserIP();
                     const newMessage = createMessage(result.message, isSent);
                     messagesContainer.appendChild(newMessage);
                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    
+                    // 更新 lastMessageId，避免重复获取消息
+                    if (result.message.id > lastMessageId) {
+                        lastMessageId = result.message.id;
+                    }
                 } else {
                     // 显示错误并移除临时消息
                     tempMessage.remove();
@@ -2877,6 +2974,11 @@ $user_ip = getUserIP();
         // 发送消息
         document.getElementById('message-form')?.addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            // 防止重复提交：如果正在发送消息或队列中有消息，直接返回
+            if (isSending || messageQueue.length > 0) {
+                return;
+            }
             
             const formData = new FormData(e.target);
             const messageInput = document.getElementById('message-input');
@@ -3125,16 +3227,39 @@ $user_ip = getUserIP();
                             let hasNewMessages = false;
                             
                             data.messages.forEach(msg => {
-                                // 添加所有新消息，包括自己发送的和其他成员发送的
-                                const isSent = msg.sender_id == <?php echo $user_id; ?>;
-                                const newMessage = createMessage(msg, isSent);
-                                messagesContainer.appendChild(newMessage);
-                                hasNewMessages = true;
-                                // 更新lastMessageId为最新消息ID
-                                if (msg.id > lastMessageId) {
-                                    lastMessageId = msg.id;
-                                }
-                            });
+                    // 检查消息是否已经存在，避免重复添加
+                    const existingMessages = messagesContainer.querySelectorAll('.message');
+                    let messageExists = false;
+                    
+                    for (const existingMsg of existingMessages) {
+                        // 获取现有消息的时间和内容，用于比较
+                        const existingTime = existingMsg.querySelector('.message-time')?.textContent;
+                        const existingContent = existingMsg.querySelector('.message-text')?.textContent;
+                        
+                        // 如果是自己发送的消息，比较消息内容和时间
+                        if (msg.sender_id == <?php echo $user_id; ?>) {
+                            const newTime = new Date(msg.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                            if (existingContent === msg.content && existingTime === newTime) {
+                                messageExists = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // 如果消息不存在，添加到容器中
+                    if (!messageExists) {
+                        // 添加所有新消息，包括自己发送的和其他成员发送的
+                        const isSent = msg.sender_id == <?php echo $user_id; ?>;
+                        const newMessage = createMessage(msg, isSent);
+                        messagesContainer.appendChild(newMessage);
+                        hasNewMessages = true;
+                    }
+                    
+                    // 更新lastMessageId为最新消息ID
+                    if (msg.id > lastMessageId) {
+                        lastMessageId = msg.id;
+                    }
+                });
                             
                             if (hasNewMessages) {
                                 // 滚动到底部
@@ -3528,5 +3653,247 @@ $user_ip = getUserIP();
         </div>
     </div>
     </div>
+    <!-- 图片查看器功能 -->
+    <script>
+        // 直接在页面加载完成后绑定事件监听器，不依赖DOMContentLoaded
+        window.onload = function() {
+            console.log('页面加载完成，开始绑定图片查看器事件');
+            
+            // 图片查看器功能
+            const imageViewer = document.getElementById('imageViewer');
+            const imageViewerContent = document.getElementById('imageViewerContent');
+            const imageViewerClose = document.getElementById('imageViewerClose');
+            
+            console.log('获取到的元素:', {
+                imageViewer: !!imageViewer,
+                imageViewerContent: !!imageViewerContent,
+                imageViewerClose: !!imageViewerClose
+            });
+            
+            // 双指缩放相关变量
+            let initialDistance = null;
+            let currentScale = 1;
+            let lastScale = 1;
+            
+            // 拖拽相关变量
+            let isDragging = false;
+            let startX = 0;
+            let startY = 0;
+            let translateX = 0;
+            let translateY = 0;
+            let lastTranslateX = 0;
+            let lastTranslateY = 0;
+            
+            // 点击图片放大
+            document.addEventListener('click', function(e) {
+                if (e.target.tagName === 'IMG' && e.target.closest('.message-content')) {
+                    e.preventDefault();
+                    const imgSrc = e.target.src;
+                    imageViewerContent.src = imgSrc;
+                    // 重置缩放和拖拽状态
+                    currentScale = 1;
+                    lastScale = 1;
+                    translateX = 0;
+                    translateY = 0;
+                    lastTranslateX = 0;
+                    lastTranslateY = 0;
+                    imageViewerContent.style.transform = 'translate(-50%, -50%) scale(1)';
+                    imageViewer.classList.add('active');
+                    console.log('图片查看器已打开');
+                }
+            });
+            
+            // 关闭查看器的函数
+            function closeImageViewer() {
+                console.log('开始关闭图片查看器');
+                if (imageViewer) {
+                    imageViewer.classList.remove('active');
+                    console.log('移除了active类');
+                }
+                if (imageViewerContent) {
+                    imageViewerContent.src = '';
+                    console.log('清空了图片src');
+                }
+                // 重置缩放和拖拽状态
+                currentScale = 1;
+                lastScale = 1;
+                translateX = 0;
+                translateY = 0;
+                lastTranslateX = 0;
+                lastTranslateY = 0;
+                if (imageViewerContent) {
+                    imageViewerContent.style.transform = 'translate(-50%, -50%) scale(1)';
+                    console.log('重置了图片变换');
+                }
+                console.log('图片查看器已关闭');
+            }
+            
+            // 直接为关闭按钮添加点击事件，不依赖DOMContentLoaded
+            const closeBtn = document.getElementById('imageViewerClose');
+            if (closeBtn) {
+                console.log('找到了关闭按钮，绑定点击事件');
+                closeBtn.onclick = function() {
+                    console.log('关闭按钮被点击');
+                    closeImageViewer();
+                };
+            }
+            
+            // 点击图片关闭查看器
+            if (imageViewerContent) {
+                imageViewerContent.addEventListener('click', function(e) {
+                    console.log('图片被点击，尝试关闭查看器');
+                    closeImageViewer();
+                });
+            }
+            
+            // 点击查看器背景或非图片区域关闭
+            if (imageViewer) {
+                imageViewer.addEventListener('click', function(e) {
+                    console.log('查看器被点击，尝试关闭查看器');
+                    // 如果点击的是查看器本身（背景），关闭查看器
+                    // 图片和关闭按钮有自己的事件处理，不需要在这里处理
+                    if (e.target === imageViewer) {
+                        closeImageViewer();
+                    }
+                });
+            }
+            
+            // 键盘ESC键关闭
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && imageViewer && imageViewer.classList.contains('active')) {
+                    console.log('ESC键被按下，尝试关闭查看器');
+                    closeImageViewer();
+                }
+            });
+            
+            // 触摸开始事件 - 记录初始位置和变换
+            if (imageViewer) {
+                imageViewer.addEventListener('touchstart', function(e) {
+                    // 只在双指触摸时才阻止默认行为，单指触摸允许点击事件
+                    if (e.touches.length === 2) {
+                        e.preventDefault();
+                    }
+                    
+                    if (e.touches.length === 1) {
+                        // 单指触摸 - 准备拖拽
+                        isDragging = true;
+                        startX = e.touches[0].clientX;
+                        startY = e.touches[0].clientY;
+                        lastTranslateX = translateX;
+                        lastTranslateY = translateY;
+                    } else if (e.touches.length === 2) {
+                        // 双指触摸 - 准备缩放
+                        isDragging = false;
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+                        // 计算两指初始距离
+                        initialDistance = Math.sqrt(
+                            Math.pow(touch2.clientX - touch1.clientX, 2) +
+                            Math.pow(touch2.clientY - touch1.clientY, 2)
+                        );
+                        lastScale = currentScale;
+                        lastTranslateX = translateX;
+                        lastTranslateY = translateY;
+                    }
+                }, { passive: false });
+                
+                // 触摸移动事件 - 计算缩放和拖拽
+                imageViewer.addEventListener('touchmove', function(e) {
+                    // 只在真正进行拖拽或缩放时才阻止默认行为
+                    if ((e.touches.length === 1 && isDragging) || e.touches.length === 2) {
+                        e.preventDefault();
+                    }
+                    
+                    if (e.touches.length === 1 && isDragging) {
+                        // 单指触摸 - 拖拽
+                        const currentX = e.touches[0].clientX;
+                        const currentY = e.touches[0].clientY;
+                        
+                        // 计算拖拽距离
+                        const deltaX = currentX - startX;
+                        const deltaY = currentY - startY;
+                        
+                        // 更新拖拽位置
+                        translateX = lastTranslateX + deltaX;
+                        translateY = lastTranslateY + deltaY;
+                        
+                        // 应用变换
+                        imageViewerContent.style.transform = `translate(${translateX}px, ${translateY}px) translate(-50%, -50%) scale(${currentScale})`;
+                    } else if (e.touches.length === 2) {
+                        // 双指触摸 - 缩放
+                        isDragging = false;
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+                        
+                        // 计算两指当前距离
+                        const currentDistance = Math.sqrt(
+                            Math.pow(touch2.clientX - touch1.clientX, 2) +
+                            Math.pow(touch2.clientY - touch1.clientY, 2)
+                        );
+                        
+                        if (initialDistance) {
+                            // 计算缩放比例
+                            const scale = (currentDistance / initialDistance) * lastScale;
+                            // 限制缩放范围（0.5 - 3倍）
+                            currentScale = Math.min(Math.max(0.5, scale), 3);
+                            
+                            // 计算两指中心点
+                            const centerX = (touch1.clientX + touch2.clientX) / 2;
+                            const centerY = (touch1.clientY + touch2.clientY) / 2;
+                            
+                            // 计算相对于图片中心点的偏移
+                            const imgRect = imageViewerContent.getBoundingClientRect();
+                            const imgCenterX = imgRect.left + imgRect.width / 2;
+                            const imgCenterY = imgRect.top + imgRect.height / 2;
+                            
+                            // 计算缩放时的位移补偿
+                            const offsetX = (centerX - imgCenterX) * (currentScale / lastScale - 1);
+                            const offsetY = (centerY - imgCenterY) * (currentScale / lastScale - 1);
+                            
+                            // 更新拖拽位置
+                            translateX = lastTranslateX + offsetX;
+                            translateY = lastTranslateY + offsetY;
+                            
+                            // 应用变换
+                            imageViewerContent.style.transform = `translate(${translateX}px, ${translateY}px) translate(-50%, -50%) scale(${currentScale})`;
+                        }
+                    }
+                }, { passive: false });
+                
+                // 触摸结束事件 - 重置状态
+                imageViewer.addEventListener('touchend', function(e) {
+                    // 移除preventDefault()，允许点击事件触发
+                    // e.preventDefault();
+                    
+                    if (e.touches.length === 0) {
+                        // 所有手指离开屏幕
+                        isDragging = false;
+                        initialDistance = null;
+                        
+                        // 限制拖拽范围，确保图片不会拖出太多
+                        const imgRect = imageViewerContent.getBoundingClientRect();
+                        const viewerRect = imageViewer.getBoundingClientRect();
+                        
+                        // 计算图片相对于视口的尺寸
+                        const imgWidth = imgRect.width;
+                        const imgHeight = imgRect.height;
+                        
+                        // 计算最大允许拖拽距离
+                        const maxDragX = (imgWidth - viewerRect.width) / 2;
+                        const maxDragY = (imgHeight - viewerRect.height) / 2;
+                        
+                        // 限制拖拽范围
+                        translateX = Math.min(Math.max(-maxDragX, translateX), maxDragX);
+                        translateY = Math.min(Math.max(-maxDragY, translateY), maxDragY);
+                        
+                        // 应用最终变换
+                        imageViewerContent.style.transform = `translate(${translateX}px, ${translateY}px) translate(-50%, -50%) scale(${currentScale})`;
+                    }
+                }, { passive: false });
+            }
+            
+            console.log('图片查看器事件绑定完成');
+        };
+    </script>
 </body>
 </html>
