@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS group_messages (
     file_path VARCHAR(255) NULL,
     file_name VARCHAR(255) NULL,
     file_size INT NULL,
-    type ENUM('text', 'file') DEFAULT 'text',
+    file_type ENUM('text', 'file') DEFAULT 'text',
     is_encrypted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
